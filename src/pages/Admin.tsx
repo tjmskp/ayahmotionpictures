@@ -92,8 +92,10 @@ const Admin = () => {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="hero" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-8">
+          <TabsList className="grid w-full grid-cols-7 mb-8">
             <TabsTrigger value="hero">Hero</TabsTrigger>
+            <TabsTrigger value="logos">Logos</TabsTrigger>
+            <TabsTrigger value="videos">Videos</TabsTrigger>
             <TabsTrigger value="synopsis">Synopsis</TabsTrigger>
             <TabsTrigger value="causes">Causes</TabsTrigger>
             <TabsTrigger value="presentation">Presentation</TabsTrigger>
@@ -102,6 +104,20 @@ const Admin = () => {
 
           <TabsContent value="hero">
             <MediaManager type="hero_video" title="Hero Video" acceptedTypes="video/*" />
+          </TabsContent>
+
+          <TabsContent value="logos">
+            <div className="space-y-6">
+              <MediaManager type="header_logo" title="Header Logo" acceptedTypes="image/*" />
+              <MediaManager type="footer_logo" title="Footer Logo" acceptedTypes="image/*" />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="videos">
+            <div className="space-y-6">
+              <MediaManager type="latest_video" title="Latest Video URL" acceptedTypes="" />
+              <MediaManager type="behind_scenes_video" title="Behind The Scenes URL" acceptedTypes="" />
+            </div>
           </TabsContent>
 
           <TabsContent value="synopsis">

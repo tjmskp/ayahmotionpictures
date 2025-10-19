@@ -118,6 +118,10 @@ export type Database = {
         | "synopsis_image"
         | "cause_image"
         | "presentation"
+        | "header_logo"
+        | "footer_logo"
+        | "latest_video"
+        | "behind_scenes_video"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -251,6 +255,10 @@ export const Constants = {
         "synopsis_image",
         "cause_image",
         "presentation",
+        "header_logo",
+        "footer_logo",
+        "latest_video",
+        "behind_scenes_video",
       ],
     },
   },

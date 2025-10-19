@@ -1,11 +1,59 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [legalModal, setLegalModal] = useState<"privacy" | "terms" | "pci" | null>(null);
+  const [headerLogo, setHeaderLogo] = useState<string | null>(null);
+  const [footerLogo, setFooterLogo] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadLogos();
+
+    const channel = supabase
+      .channel("logos")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "media",
+          filter: "type=in.(header_logo,footer_logo)",
+        },
+        () => {
+          loadLogos();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const loadLogos = async () => {
+    const { data: headerData } = await supabase
+      .from("media")
+      .select("url")
+      .eq("type", "header_logo")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    const { data: footerData } = await supabase
+      .from("media")
+      .select("url")
+      .eq("type", "footer_logo")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (headerData) setHeaderLogo(headerData.url);
+    if (footerData) setFooterLogo(footerData.url);
+  };
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -20,10 +68,16 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-gold rounded-lg flex items-center justify-center text-primary-foreground font-bold">
-                A
-              </div>
-              <span className="text-xl font-bold text-foreground">Ayah Motion Pictures</span>
+              {headerLogo ? (
+                <img src={headerLogo} alt="Ayah Motion Pictures" className="h-10 object-contain" />
+              ) : (
+                <>
+                  <div className="w-10 h-10 bg-gradient-gold rounded-lg flex items-center justify-center text-primary-foreground font-bold">
+                    A
+                  </div>
+                  <span className="text-xl font-bold text-foreground">Ayah Motion Pictures</span>
+                </>
+              )}
             </div>
 
             {/* Desktop Navigation */}
@@ -77,6 +131,11 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       {/* Footer */}
       <footer className="bg-card border-t border-border py-8 mt-20">
         <div className="container mx-auto px-4">
+          {footerLogo && (
+            <div className="flex justify-center mb-6">
+              <img src={footerLogo} alt="Ayah Motion Pictures" className="h-12 object-contain" />
+            </div>
+          )}
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-muted-foreground text-sm">
               © {new Date().getFullYear()} Ayah Motion Pictures. All rights reserved.

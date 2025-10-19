@@ -18,7 +18,9 @@ export const MediaManager = ({ type, title, acceptedTypes, multiple = false }: M
   const [media, setMedia] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [caption, setCaption] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
   const { toast } = useToast();
+  const isVideoUrl = type === "latest_video" || type === "behind_scenes_video";
 
   useEffect(() => {
     loadMedia();
@@ -102,11 +104,55 @@ export const MediaManager = ({ type, title, acceptedTypes, multiple = false }: M
     }
   };
 
+  const handleAddVideoUrl = async () => {
+    if (!videoUrl) {
+      toast({
+        title: "Error",
+        description: "Please enter a video URL",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      await supabase.from("media").insert({
+        type: type as any,
+        url: videoUrl,
+        caption: caption || null,
+        file_name: `${type}_${Date.now()}`,
+        mime_type: "text/url",
+        file_size: 0,
+      });
+
+      toast({ title: "Video URL added successfully!" });
+      loadMedia();
+      setCaption("");
+      setVideoUrl("");
+    } catch (error: any) {
+      toast({
+        title: "Failed to add URL",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleDelete = async (id: string, url: string) => {
     try {
-      const path = url.split("/media/")[1];
-      await supabase.storage.from("media").remove([path]);
-      await supabase.from("media").delete().eq("id", id);
+      // Only attempt to delete from storage if it's an actual uploaded file
+      if (!url.includes("/media/") && (type === "latest_video" || type === "behind_scenes_video")) {
+        // Just delete from database for URL entries
+        await supabase.from("media").delete().eq("id", id);
+      } else {
+        // Delete from storage and database for uploaded files
+        const path = url.split("/media/")[1];
+        await supabase.storage.from("media").remove([path]);
+        await supabase.from("media").delete().eq("id", id);
+      }
       
       toast({ title: "Deleted successfully" });
       loadMedia();
@@ -136,20 +182,42 @@ export const MediaManager = ({ type, title, acceptedTypes, multiple = false }: M
             />
           </div>
 
-          <div>
-            <Label htmlFor="file">File</Label>
-            <Input
-              id="file"
-              type="file"
-              accept={acceptedTypes}
-              multiple={multiple}
-              onChange={handleUpload}
-              disabled={uploading}
-              className="mt-1"
-            />
-          </div>
+          {isVideoUrl ? (
+            <>
+              <div>
+                <Label htmlFor="video-url">YouTube Video URL</Label>
+                <Input
+                  id="video-url"
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  placeholder="Paste YouTube video URL here..."
+                  className="mt-1"
+                />
+              </div>
+              <Button
+                onClick={handleAddVideoUrl}
+                disabled={uploading}
+                className="w-full"
+              >
+                {uploading ? "Adding..." : "Add Video URL"}
+              </Button>
+            </>
+          ) : (
+            <div>
+              <Label htmlFor="file">File</Label>
+              <Input
+                id="file"
+                type="file"
+                accept={acceptedTypes}
+                multiple={multiple}
+                onChange={handleUpload}
+                disabled={uploading}
+                className="mt-1"
+              />
+            </div>
+          )}
 
-          {uploading && <p className="text-sm text-muted-foreground">Uploading...</p>}
+          {uploading && <p className="text-sm text-muted-foreground">{isVideoUrl ? "Adding..." : "Uploading..."}</p>}
         </div>
       </Card>
 
@@ -161,6 +229,11 @@ export const MediaManager = ({ type, title, acceptedTypes, multiple = false }: M
             )}
             {item.mime_type?.startsWith("video/") && (
               <video src={item.url} controls className="w-full h-48 rounded mb-2" />
+            )}
+            {item.mime_type === "text/url" && (
+              <div className="w-full h-48 bg-muted rounded mb-2 flex items-center justify-center p-4">
+                <p className="text-sm text-muted-foreground break-all">{item.url}</p>
+              </div>
             )}
             
             <p className="text-sm font-medium text-foreground mb-1">{item.file_name}</p>

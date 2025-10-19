@@ -1,9 +1,65 @@
+import { useEffect, useState } from "react";
 import { Youtube, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+
+interface VideoItem {
+  id: string;
+  url: string;
+  caption: string | null;
+  type: string;
+}
 
 export const YouTubeSection = () => {
-  // Placeholder subscriber count - will be replaced with real API data later
+  const [videos, setVideos] = useState<VideoItem[]>([]);
   const subscriberCount = "1.2K";
+
+  useEffect(() => {
+    loadVideos();
+
+    const channel = supabase
+      .channel("youtube_videos")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "media",
+          filter: "type=in.(latest_video,behind_scenes_video)",
+        },
+        () => {
+          loadVideos();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const loadVideos = async () => {
+    const { data } = await supabase
+      .from("media")
+      .select("*")
+      .in("type", ["latest_video", "behind_scenes_video"])
+      .order("created_at", { ascending: false });
+
+    if (data) {
+      setVideos(data);
+    }
+  };
+
+  const getEmbedUrl = (url: string) => {
+    if (url.includes("youtube.com/watch?v=")) {
+      const videoId = url.split("v=")[1]?.split("&")[0];
+      return `https://www.youtube.com/embed/${videoId}`;
+    } else if (url.includes("youtu.be/")) {
+      const videoId = url.split("youtu.be/")[1]?.split("?")[0];
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+    return url;
+  };
 
   return (
     <section id="youtube" className="py-20 bg-card">
@@ -43,27 +99,44 @@ export const YouTubeSection = () => {
             </Button>
           </div>
 
-          {/* Video Grid Placeholder */}
-          <div className="grid md:grid-cols-3 gap-6">
-            {[1, 2, 3].map((index) => (
+          {/* Video Grid */}
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            {videos.map((video, index) => (
               <div 
-                key={index}
+                key={video.id}
                 className="group cursor-pointer animate-fade-in"
                 style={{ animationDelay: `${index * 0.1}s` }}
+                onClick={() => window.open(video.url, "_blank")}
               >
                 <div className="aspect-video bg-gradient-hero rounded-xl overflow-hidden border border-border group-hover:border-primary transition-all duration-300 shadow-elegant">
-                  <div className="w-full h-full flex items-center justify-center group-hover:scale-105 transition-transform">
-                    <Youtube className="h-12 w-12 text-muted-foreground" />
-                  </div>
+                  {video.url ? (
+                    <iframe
+                      src={getEmbedUrl(video.url)}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center group-hover:scale-105 transition-transform">
+                      <Youtube className="h-12 w-12 text-muted-foreground" />
+                    </div>
+                  )}
                 </div>
                 <div className="mt-3 space-y-1">
                   <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                    Latest Video {index}
+                    {video.type === "latest_video" ? "Latest Video" : "Behind The Scenes"}
                   </h4>
-                  <p className="text-sm text-muted-foreground">Behind the scenes content</p>
+                  {video.caption && (
+                    <p className="text-sm text-muted-foreground">{video.caption}</p>
+                  )}
                 </div>
               </div>
             ))}
+            {videos.length === 0 && (
+              <div className="col-span-2 text-center py-12 text-muted-foreground">
+                No videos uploaded yet. Upload videos from the admin dashboard.
+              </div>
+            )}
           </div>
         </div>
       </div>
