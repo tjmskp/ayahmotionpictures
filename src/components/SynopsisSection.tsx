@@ -7,6 +7,27 @@ export const SynopsisSection = () => {
 
   useEffect(() => {
     loadSynopsisImage();
+
+    // Subscribe to real-time updates for synopsis image
+    const channel = supabase
+      .channel('synopsis-image-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'media',
+          filter: 'type=eq.synopsis_image'
+        },
+        () => {
+          loadSynopsisImage();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadSynopsisImage = async () => {

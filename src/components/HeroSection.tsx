@@ -2,12 +2,34 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { ArabicLettersAnimation } from "@/components/ArabicLettersAnimation";
 
 export const HeroSection = () => {
   const [heroVideo, setHeroVideo] = useState<string | null>(null);
 
   useEffect(() => {
     loadHeroVideo();
+
+    // Subscribe to real-time updates for hero video
+    const channel = supabase
+      .channel('hero-video-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'media',
+          filter: 'type=eq.hero_video'
+        },
+        () => {
+          loadHeroVideo();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadHeroVideo = async () => {
@@ -29,6 +51,9 @@ export const HeroSection = () => {
 
   return (
     <section id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      {/* Arabic Letters Animation */}
+      <ArabicLettersAnimation />
+      
       {/* Video Background or Gradient */}
       {heroVideo ? (
         <video

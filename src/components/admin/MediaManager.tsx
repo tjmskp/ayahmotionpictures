@@ -22,6 +22,27 @@ export const MediaManager = ({ type, title, acceptedTypes, multiple = false }: M
 
   useEffect(() => {
     loadMedia();
+
+    // Subscribe to real-time updates for this media type
+    const channel = supabase
+      .channel(`media-${type}-changes`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'media',
+          filter: `type=eq.${type}`
+        },
+        () => {
+          loadMedia();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [type]);
 
   const loadMedia = async () => {

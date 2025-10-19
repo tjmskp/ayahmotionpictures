@@ -8,6 +8,27 @@ export const PresentationSection = () => {
 
   useEffect(() => {
     loadPresentations();
+
+    // Subscribe to real-time updates for presentations
+    const channel = supabase
+      .channel('presentations-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'media',
+          filter: 'type=eq.presentation'
+        },
+        () => {
+          loadPresentations();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadPresentations = async () => {

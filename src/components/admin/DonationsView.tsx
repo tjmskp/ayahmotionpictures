@@ -10,6 +10,26 @@ export const DonationsView = () => {
 
   useEffect(() => {
     loadDonations();
+
+    // Subscribe to real-time updates for donations
+    const channel = supabase
+      .channel('donations-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'donations'
+        },
+        () => {
+          loadDonations();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadDonations = async () => {

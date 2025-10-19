@@ -30,6 +30,27 @@ export const CausesSection = () => {
 
   useEffect(() => {
     loadCauseImages();
+
+    // Subscribe to real-time updates for cause images
+    const channel = supabase
+      .channel('cause-images-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'media',
+          filter: 'type=eq.cause_image'
+        },
+        () => {
+          loadCauseImages();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadCauseImages = async () => {
