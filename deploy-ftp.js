@@ -1,13 +1,33 @@
-const FtpDeploy = require('ftp-deploy');
+import FtpDeploy from 'ftp-deploy';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { readFileSync } from 'fs';
+
+// Load environment variables from .env file
+const envFile = readFileSync('.env', 'utf8');
+const envVars = {};
+envFile.split('\n').forEach(line => {
+  const [key, value] = line.split('=');
+  if (key && value) {
+    envVars[key.trim()] = value.trim();
+  }
+});
+
+// Set environment variables
+Object.assign(process.env, envVars);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 const ftpDeploy = new FtpDeploy();
 
 const config = {
-  user: "u581183335",
+  user: "u581183335.ayahmotionpictures", // Full username
   password: process.env.FTP_PASSWORD, // Set this in environment
-  host: "ayahmotionpictures.com",
+  host: "185.232.14.138", // Use IP address instead of hostname
   port: 21,
-  localRoot: __dirname + "/dist",
-  remoteRoot: "/public_html/",
+  localRoot: join(__dirname, "dist"),
+  remoteRoot: "/home/u581183335/domains/ayahmotionpictures.com/public_html/",
   include: ["*", "**/*"],
   exclude: [
     "dist/**/*.map",
